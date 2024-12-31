@@ -1,7 +1,10 @@
 
 import random
 import sys
+
 from time import sleep
+
+from Utils import screen_cleaner
 
 game_difficulty = 1
 
@@ -51,8 +54,8 @@ def play(difficulty):
     print(random_numbers_list)
     sleep(0.7)
 
-    # clear_screen()
-    erase_last_line()
+    screen_cleaner()
+    #erase_last_line()
 
     user_list = get_list_from_user()
     result =  is_list_equal(user_list, random_numbers_list)

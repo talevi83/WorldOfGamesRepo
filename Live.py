@@ -1,3 +1,6 @@
+from Score import add_score
+
+
 def welcome(name):
     return (f"Hello {name} and welcome to the World of Games (WoG).\n"
             f"Here you can find many cool games to play.\n")
@@ -28,13 +31,16 @@ def load_game():
         match game_choice:
             case 1:
                 from MemoryGame import play
-                play(difficulty_choice)
+                if play(difficulty_choice):
+                    add_score(difficulty_choice)
             case 2:
                 from GuessGame import play
-                play(difficulty_choice)
+                if play(difficulty_choice):
+                    add_score(difficulty_choice)
             case 3:
                 from CurrencyRoletteGame import play
-                play(difficulty_choice)
+                if play(difficulty_choice):
+                    add_score(difficulty_choice)
 
 
 
