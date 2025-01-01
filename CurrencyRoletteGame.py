@@ -48,10 +48,10 @@ def play(difficulty):
 
     # Check if the guess is within the interval
     if lower_bound <= user_guess <= upper_bound:
-        print("Congratulations! You won!")
+        print("Congratulations! You won!\n\n")
         return True
     else:
-        print(f"Sorry, you lost. The correct range was {lower_bound:.2f} to {upper_bound:.2f}.")
+        print(f"Sorry, you lost. The correct range was {lower_bound:.2f} to {upper_bound:.2f}.\n\n")
         return False
 
 
