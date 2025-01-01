@@ -6,7 +6,8 @@ def add_score(difficulty):
             with open(SCORES_FILE_NAME, "r") as file:
                 content = float(file.read().strip())
                 content = content + (difficulty * 3) + 5
-        except FileNotFoundError:
+
+        except (FileNotFoundError, ValueError):
             content = (difficulty * 3) + 5
 
         with open(SCORES_FILE_NAME, "w") as file:

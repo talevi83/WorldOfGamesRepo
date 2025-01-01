@@ -9,7 +9,12 @@ def welcome(name):
 def validate_user_input(message:str, min:int, max:int):
     while True:
         try:
-            user_input = int(input(f"{message} "))
+            user_input = input(f"{message} ")
+            if user_input == 'q':
+                print("Thank you for playing... Goodbye!")
+                return None
+
+            user_input = int(user_input)
             if user_input >= min and user_input <= max:
                 return user_input
             else:
@@ -19,13 +24,15 @@ def validate_user_input(message:str, min:int, max:int):
 
 
 def load_game():
+    while True:
         game_choice_message = ("Please choose a game to play or 'q' to quit: \n"
-                   "1. Memory Game - a sequence of numbers will appear for 1 second and you have to guess it back\n"
-                   "2. Guess Game - guess a number and see if you chose like the computer\n"
-                   "3. Currency Roulette - try and guess the value of a random amount of USD in ILS \n")
+                               "1. Memory Game - a sequence of numbers will appear for 1 second and you have to guess it back\n"
+                               "2. Guess Game - guess a number and see if you chose like the computer\n"
+                               "3. Currency Roulette - try and guess the value of a random amount of USD in ILS \n")
 
         game_choice = validate_user_input(game_choice_message, 1, 3)
-
+        if game_choice is None:
+            return
         difficulty_choice = validate_user_input("Please choose game difficulty from 1 to 5: ",1, 5)
 
         match game_choice:
