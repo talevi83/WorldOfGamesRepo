@@ -1,5 +1,9 @@
 from Utils import SCORES_FILE_NAME
+from flask import Flask
 
+app = Flask(__name__)
+
+@app.route('/')
 def score_server():
     try:
         with open(SCORES_FILE_NAME, "r") as file:
@@ -17,3 +21,6 @@ def add_to_html(score):
     <h1>The score is <div id="score">{score}</div></h1>
     </body>
     </html>"""
+
+if __name__ == "__main__":
+    app.run(debug=True)
