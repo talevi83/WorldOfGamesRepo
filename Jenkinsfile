@@ -38,12 +38,17 @@ pipeline {
                        docker stop test-container || true
                        docker rm test-container || true
 
-                       # Run container
+                       # First run the container without the volume
                        docker run -d \
                            -p 8777:8777 \
-                           -v "${WORKSPACE}/Scores.txt:/app/Scores.txt:rw" \
                            --name test-container \
                            ${IMAGE_NAME}:${IMAGE_TAG}
+
+                       # Then copy the file into the container
+                       docker cp "${WORKSPACE}/Scores.txt" test-container:/app/Scores.txt
+
+                       # Debug: Verify file is copied
+                       docker exec test-container ls -la /app/Scores.txt
 
                        # Wait for container to be ready
                        sleep 10
@@ -83,22 +88,3 @@ pipeline {
                    )]) {
                        sh 'echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin'
                        // Push image
-                       sh "docker push ${IMAGE_NAME}:${IMAGE_TAG}"
-                   }
-               }
-           }
-       }
-
-       stage('Cleanup') {
-           steps {
-               script {
-                   sh '''
-                       docker stop test-container || true
-                       docker rm test-container || true
-                       docker logout || true
-                   '''
-               }
-           }
-       }
-   }
-}
