@@ -48,13 +48,15 @@ pipeline {
                        # Then copy the file into the container
                        docker cp "${WORKSPACE}/Scores.txt" test-container:/app/Scores.txt
                        docker cp "${WORKSPACE}/tests/e2e.py" test-container:/app/e2e.py
-
-                       # Install selenium in the container
-                       docker exec test-container pip install selenium
+                       docker cp "${WORKSPACE}/tests/requirements.txt" test-container:/app/requirements.txt
 
                        # Debug: Verify file is copied
                        docker exec test-container ls -la /app/Scores.txt
                        docker exec test-container ls -la /app/e2e.py
+                       docker exec test-container ls -la /app/requirements.txt
+                      
+                       # Install dependencies from requirements.txt
+                       docker exec test-container pip install -r /app/requirements.txt
 
                        # Wait for container to be ready
                        sleep 10
