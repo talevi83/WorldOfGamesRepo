@@ -39,54 +39,66 @@ pipeline {
                 docker stop test-container || true
                 docker rm test-container || true
 
-                # Run container with host network
+                # Run container with explicit port mapping
                 docker run -d \
-                    --network host \
+                    -p 8777:8777 \
                     --name test-container \
                     ${IMAGE_NAME}:${IMAGE_TAG}
 
-                # Wait for container to start
+                # Wait for container to initialize
+                echo "Waiting for container to initialize..."
                 sleep 5
 
-                # Check container status and logs
-                docker ps -a | grep test-container
-                echo "Container logs:"
-                docker logs test-container
-
-                # If container is running, proceed with file copies
-                if docker ps | grep -q test-container; then
-                    # Copy files into container
-                    docker cp "${WORKSPACE}/Scores.txt" test-container:/app/Scores.txt
-                    docker cp "${WORKSPACE}/tests/e2e.py" test-container:/app/e2e.py
-                    docker cp "${WORKSPACE}/requirements.txt" test-container:/app/requirements.txt
-
-                    # Verify files are copied
-                    docker exec test-container ls -la /app/Scores.txt
-                    docker exec test-container ls -la /app/e2e.py
-                    docker exec test-container ls -la /app/requirements.txt
-
-                    # Test from inside container
-                    echo "Testing from inside container:"
-                    docker exec test-container curl -v http://localhost:8777/
-
-                    # Test from Jenkins
-                    echo "Testing from Jenkins:"
-                    for i in {1..3}; do
-                        echo "Attempt $i: Testing connection..."
-                        if curl -v --connect-timeout 5 http://localhost:8777/; then
-                            echo "Connection successful!"
-                            exit 0
-                        fi
-                        sleep 2
-                    done
-
-                    echo "All connection attempts failed"
-                    exit 1
-                else
+                # Check container status
+                if ! docker ps | grep -q test-container; then
                     echo "Container failed to start properly"
                     docker logs test-container
                     exit 1
                 fi
+
+                # Copy files into container
+                docker cp "${WORKSPACE}/Scores.txt" test-container:/app/Scores.txt
+                docker cp "${WORKSPACE}/tests/e2e.py" test-container:/app/e2e.py
+                docker cp "${WORKSPACE}/requirements.txt" test-container:/app/requirements.txt
+
+                # Verify files are copied
+                docker exec test-container ls -la /app/Scores.txt
+                docker exec test-container ls -la /app/e2e.py
+                docker exec test-container ls -la /app/requirements.txt
+
+                # Test health endpoint from inside container
+                echo "Testing health endpoint from inside container..."
+                if ! docker exec test-container curl -f http://localhost:8777/health; then
+                    echo "Health check failed inside container"
+                    exit 1
+                fi
+
+                # Wait a bit more for the app to be fully ready
+                sleep 2
+
+                # Test health endpoint from host
+                echo "Testing health endpoint from host..."
+                MAX_RETRIES=3
+                RETRY_COUNT=0
+
+                while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+                    if curl -f http://localhost:8777/health; then
+                        echo "Health check passed from host"
+
+                        # Now test the main endpoint
+                        echo "Testing main endpoint..."
+                        curl -v http://localhost:8777/
+                        exit 0
+                    fi
+
+                    RETRY_COUNT=$((RETRY_COUNT + 1))
+                    echo "Health check attempt $RETRY_COUNT failed, retrying..."
+                    sleep 2
+                done
+
+                echo "Health check failed after $MAX_RETRIES attempts"
+                docker logs test-container
+                exit 1
             '''
         }
     }
