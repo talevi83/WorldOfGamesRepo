@@ -32,7 +32,8 @@ pipeline {
         script {
             sh '''
                 # Create a dedicated network for the test
-                docker network create test-network || true
+                docker network prune -f
+                docker network create test-network
 
                 # Debug: Check file existence and permissions
                 ls -la "${WORKSPACE}/Scores.txt"
@@ -42,49 +43,43 @@ pipeline {
                 docker stop test-container || true
                 docker rm test-container || true
 
-                # Run container with explicit port mapping and network
+                # Run container with explicit port mapping
                 docker run -d \
                     --network test-network \
-                    -p 0.0.0.0:8777:8777 \
+                    -p 8777:8777 \
+                    -v "${WORKSPACE}:/app" \
                     --name test-container \
                     ${IMAGE_NAME}:${IMAGE_TAG}
 
                 # Wait for container to initialize
                 echo "Waiting for container to initialize..."
-                sleep 5
+                sleep 10
 
-                # Check container details
-                echo "Container network details:"
-                docker inspect test-container | grep -A 20 "NetworkSettings"
+                # Check container status and logs
+                docker ps
+                echo "Container logs:"
+                docker logs test-container
 
-                echo "Container IP address:"
-                docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' test-container
-
-                # Copy required files
-                docker cp "${WORKSPACE}/Scores.txt" test-container:/app/Scores.txt
-                docker cp "${WORKSPACE}/tests/e2e.py" test-container:/app/e2e.py
-                docker cp "${WORKSPACE}/requirements.txt" test-container:/app/requirements.txt
-
-                # Verify files
-                echo "Verifying files in container:"
-                docker exec test-container ls -la /app/
-
-                # Test from inside container
+                # Test health endpoint from container
                 echo "Testing from inside container..."
                 docker exec test-container curl -v http://localhost:8777/health
 
-                # Test from host with IP
-                CONTAINER_IP=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' test-container)
-                echo "Testing from host using container IP: ${CONTAINER_IP}"
-                curl -v http://${CONTAINER_IP}:8777/health
+                # Test health endpoint from host with absolute URL
+                echo "Testing from host..."
+                curl -v --connect-timeout 10 http://0.0.0.0:8777/health
 
-                # Test from host with localhost
-                echo "Testing from host using localhost:"
-                curl -v http://localhost:8777/health
-
-                # Test main endpoint
-                echo "Testing main endpoint:"
-                curl -v http://localhost:8777/
+                if [ $? -eq 0 ]; then
+                    echo "Connection successful!"
+                    curl -v http://0.0.0.0:8777/
+                else
+                    echo "Connection failed. Container status:"
+                    docker ps
+                    echo "Container logs:"
+                    docker logs test-container
+                    echo "Container network info:"
+                    docker inspect test-container | grep -A 20 "NetworkSettings"
+                    exit 1
+                fi
             '''
         }
     }
