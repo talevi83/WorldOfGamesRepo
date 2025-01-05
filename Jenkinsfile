@@ -28,58 +28,70 @@ pipeline {
         }
 
         stage('Run') {
-            steps {
-                script {
-                    sh '''
-                        # Debug: Check file existence and permissions
-                        ls -la "${WORKSPACE}/Scores.txt"
-                        ls -la "${WORKSPACE}/tests/e2e.py"
+    steps {
+        script {
+            sh '''
+                # Debug: Check file existence and permissions
+                ls -la "${WORKSPACE}/Scores.txt"
+                ls -la "${WORKSPACE}/tests/e2e.py"
 
-                        # Cleanup any existing container
-                        docker stop test-container || true
-                        docker rm test-container || true
+                # Cleanup any existing container
+                docker stop test-container || true
+                docker rm test-container || true
 
-                        # Run container with additional logging
-                        docker run -d \
-                            -p 8777:8777 \
-                            --name test-container \
-                            ${IMAGE_NAME}:${IMAGE_TAG}
+                # Run container with additional logging
+                docker run -d \
+                    -p 8777:8777 \
+                    --name test-container \
+                    ${IMAGE_NAME}:${IMAGE_TAG}
 
-                        # Wait a moment for container to start
-                        sleep 5
+                # Wait for container to start
+                sleep 5
 
-                        # Check container status and logs
-                        docker ps -a | grep test-container
-                        echo "Container logs:"
-                        docker logs test-container
+                # Check container status and logs
+                docker ps -a | grep test-container
+                echo "Container logs:"
+                docker logs test-container
 
-                        # If container is running, proceed with file copies
-                        if docker ps | grep -q test-container; then
-                            # Copy files into container
-                            docker cp "${WORKSPACE}/Scores.txt" test-container:/app/Scores.txt
-                            docker cp "${WORKSPACE}/tests/e2e.py" test-container:/app/e2e.py
-                            docker cp "${WORKSPACE}/requirements.txt" test-container:/app/requirements.txt
+                # If container is running, proceed with file copies
+                if docker ps | grep -q test-container; then
+                    # Copy files into container
+                    docker cp "${WORKSPACE}/Scores.txt" test-container:/app/Scores.txt
+                    docker cp "${WORKSPACE}/tests/e2e.py" test-container:/app/e2e.py
+                    docker cp "${WORKSPACE}/requirements.txt" test-container:/app/requirements.txt
 
-                            # Verify files are copied
-                            docker exec test-container ls -la /app/Scores.txt
-                            docker exec test-container ls -la /app/e2e.py
-                            docker exec test-container ls -la /app/requirements.txt
+                    # Verify files are copied
+                    docker exec test-container ls -la /app/Scores.txt
+                    docker exec test-container ls -la /app/e2e.py
+                    docker exec test-container ls -la /app/requirements.txt
 
-                            # Wait for app to be fully ready
-                            echo "Waiting for application to start..."
-                            sleep 10
+                    # Debug network
+                    echo "Checking container network:"
+                    docker exec test-container netstat -tulpn || true
+                    docker exec test-container curl -v localhost:8777/health || true
 
-                            # Test if app is responding
-                            curl -v http://localhost:8777/
-                        else
-                            echo "Container failed to start properly"
-                            docker logs test-container
-                            exit 1
+                    # Wait for app to be fully ready
+                    echo "Waiting for application to start..."
+                    for i in {1..12}; do
+                        if curl -s http://localhost:8777/health; then
+                            echo "Application is ready!"
+                            break
                         fi
-                    '''
-                }
-            }
+                        echo "Attempt $i: Waiting for application..."
+                        sleep 5
+                    done
+
+                    # Test main endpoint
+                    curl -v http://localhost:8777/
+                else
+                    echo "Container failed to start properly"
+                    docker logs test-container
+                    exit 1
+                fi
+            '''
         }
+    }
+}
 
         stage('Test') {
             steps {

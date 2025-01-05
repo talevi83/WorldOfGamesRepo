@@ -12,6 +12,10 @@ def score_server():
     except FileNotFoundError as e:
         return add_to_html(str(e))
 
+@app.route('/health')
+def health_check():
+    return 'OK', 200
+
 def add_to_html(score):
     return f"""<html>
     <head>

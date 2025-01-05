@@ -7,6 +7,8 @@ RUN apt-get update && apt-get install -y \
     unzip \
     chromium \
     chromium-driver \
+    curl \
+    net-tools \
     && rm -rf /var/lib/apt/lists/*
 
 # Set up Chrome environment variables
@@ -31,7 +33,7 @@ ENV FLASK_APP=MainScores.py
 ENV FLASK_ENV=production
 ENV FLASK_RUN_HOST=0.0.0.0
 ENV FLASK_RUN_PORT=8777
-ENV PYTHONPATH=/app
+ENV PYTHONUNBUFFERED=1
 
 # Command to run the application
 CMD ["python", "MainScores.py"]
