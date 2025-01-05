@@ -27,7 +27,7 @@ pipeline {
             }
         }
 
-        stage('Run') {
+    stage('Run') {
     steps {
         script {
             sh '''
@@ -39,9 +39,9 @@ pipeline {
                 docker stop test-container || true
                 docker rm test-container || true
 
-                # Run container with additional logging
+                # Run container with additional logging and host network
                 docker run -d \
-                    -p 8777:8777 \
+                    --network host \
                     --name test-container \
                     ${IMAGE_NAME}:${IMAGE_TAG}
 
@@ -52,6 +52,14 @@ pipeline {
                 docker ps -a | grep test-container
                 echo "Container logs:"
                 docker logs test-container
+
+                # Network debugging
+                echo "Host network ports:"
+                netstat -tulpn | grep 8777 || true
+
+                echo "Container network info:"
+                docker inspect -f '{{.NetworkSettings.Networks}}' test-container
+                docker exec test-container ss -tulpn | grep 8777
 
                 # If container is running, proceed with file copies
                 if docker ps | grep -q test-container; then
@@ -65,24 +73,18 @@ pipeline {
                     docker exec test-container ls -la /app/e2e.py
                     docker exec test-container ls -la /app/requirements.txt
 
-                    # Debug network
-                    echo "Checking container network:"
-                    docker exec test-container netstat -tulpn || true
-                    docker exec test-container curl -v localhost:8777/health || true
+                    # Test connectivity from inside container
+                    docker exec test-container curl -v http://localhost:8777/
 
-                    # Wait for app to be fully ready
-                    echo "Waiting for application to start..."
-                    for i in {1..12}; do
-                        if curl -s http://localhost:8777/health; then
-                            echo "Application is ready!"
+                    # Test connectivity from host
+                    for i in {1..5}; do
+                        echo "Attempt $i: Testing connection..."
+                        if curl -v --max-time 5 http://localhost:8777/; then
+                            echo "Connection successful!"
                             break
                         fi
-                        echo "Attempt $i: Waiting for application..."
-                        sleep 5
+                        sleep 2
                     done
-
-                    # Test main endpoint
-                    curl -v http://localhost:8777/
                 else
                     echo "Container failed to start properly"
                     docker logs test-container

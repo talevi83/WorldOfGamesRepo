@@ -27,4 +27,4 @@ def add_to_html(score):
     </html>"""
 
 if __name__ == "__main__":
-    app.run(host='0.0.0.0', port=8777, debug=True)
+    app.run(host='0.0.0.0', port=8777, debug=True, use_reloader=False)
