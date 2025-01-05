@@ -48,13 +48,13 @@ pipeline {
                        # Then copy the file into the container
                        docker cp "${WORKSPACE}/Scores.txt" test-container:/app/Scores.txt
                        docker cp "${WORKSPACE}/tests/e2e.py" test-container:/app/e2e.py
-                       docker cp "${WORKSPACE}/tests/requirements.txt" test-container:/app/requirements.txt
+                       docker cp "${WORKSPACE}/requirements.txt" test-container:/app/requirements.txt
 
                        # Debug: Verify file is copied
                        docker exec test-container ls -la /app/Scores.txt
                        docker exec test-container ls -la /app/e2e.py
                        docker exec test-container ls -la /app/requirements.txt
-                      
+
                        # Install dependencies from requirements.txt
                        docker exec test-container pip install -r /app/requirements.txt
 
