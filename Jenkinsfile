@@ -36,7 +36,7 @@ pipeline {
 
                         docker run -d \
                             -p 8777:8777 \
-                            -v ${WORKSPACE}/Scores.txt:/app/Scores.txt \
+                            -v "${WORKSPACE}/Scores.txt:/app/Scores.txt" \
                             --name test-container \
                             ${IMAGE_NAME}:${IMAGE_TAG}
                         # Wait for container to be ready
