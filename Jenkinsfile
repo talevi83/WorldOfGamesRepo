@@ -33,6 +33,7 @@ pipeline {
                    sh '''
                        # Debug: Check file existence and permissions
                        ls -la "${WORKSPACE}/Scores.txt"
+                       ls -la "${WORKSPACE}/tests/e2e.py"
 
                        # Cleanup any existing container
                        docker stop test-container || true
