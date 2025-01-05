@@ -79,10 +79,12 @@ pipeline {
 
     post {
         failure {
-            script {
-                // Cleanup on failure
-                sh 'docker stop test-container || true'
-                sh 'docker rm test-container || true'
+            node{
+                script {
+                    // Cleanup on failure
+                    sh 'docker stop test-container || true'
+                    sh 'docker rm test-container || true'
+                }    
             }
         }
     }
