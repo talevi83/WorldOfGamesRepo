@@ -12,8 +12,10 @@ def setup():
     options = Options()
     options.add_argument('--headless')
     options.add_argument('--no-sandbox')
+    options.add_argument('--disable-dev-shm-usage')
 
-    driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
+    service = Service('/usr/bin/chromedriver')
+    driver = webdriver.Chrome(service=service, options=options)
 
 def teardown():
     global driver
