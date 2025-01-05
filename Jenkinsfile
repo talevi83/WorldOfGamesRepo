@@ -68,7 +68,7 @@ pipeline {
            steps {
                script {
                    try {
-                       sh 'python3 /app/e2e.py'
+                       sh 'docker exec test-container python3 /app/e2e.py'
                    } catch (Exception e) {
                        error "Tests failed: ${e.message}"
                    }
