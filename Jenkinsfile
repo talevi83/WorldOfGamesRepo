@@ -88,3 +88,22 @@ pipeline {
                    )]) {
                        sh 'echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin'
                        // Push image
+                       sh "docker push ${IMAGE_NAME}:${IMAGE_TAG}"
+                   }
+               }
+           }
+       }
+
+       stage('Cleanup') {
+           steps {
+               script {
+                   sh '''
+                       docker stop test-container || true
+                       docker rm test-container || true
+                       docker logout || true
+                   '''
+               }
+           }
+       }
+   }
+}
