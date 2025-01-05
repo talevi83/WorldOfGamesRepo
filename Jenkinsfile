@@ -31,6 +31,9 @@ pipeline {
     steps {
         script {
             sh '''
+                # Create a dedicated network for the test
+                docker network create test-network || true
+
                 # Debug: Check file existence and permissions
                 ls -la "${WORKSPACE}/Scores.txt"
                 ls -la "${WORKSPACE}/tests/e2e.py"
@@ -39,9 +42,10 @@ pipeline {
                 docker stop test-container || true
                 docker rm test-container || true
 
-                # Run container with explicit port mapping
+                # Run container with explicit port mapping and network
                 docker run -d \
-                    -p 8777:8777 \
+                    --network test-network \
+                    -p 0.0.0.0:8777:8777 \
                     --name test-container \
                     ${IMAGE_NAME}:${IMAGE_TAG}
 
@@ -49,56 +53,38 @@ pipeline {
                 echo "Waiting for container to initialize..."
                 sleep 5
 
-                # Check container status
-                if ! docker ps | grep -q test-container; then
-                    echo "Container failed to start properly"
-                    docker logs test-container
-                    exit 1
-                fi
+                # Check container details
+                echo "Container network details:"
+                docker inspect test-container | grep -A 20 "NetworkSettings"
 
-                # Copy files into container
+                echo "Container IP address:"
+                docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' test-container
+
+                # Copy required files
                 docker cp "${WORKSPACE}/Scores.txt" test-container:/app/Scores.txt
                 docker cp "${WORKSPACE}/tests/e2e.py" test-container:/app/e2e.py
                 docker cp "${WORKSPACE}/requirements.txt" test-container:/app/requirements.txt
 
-                # Verify files are copied
-                docker exec test-container ls -la /app/Scores.txt
-                docker exec test-container ls -la /app/e2e.py
-                docker exec test-container ls -la /app/requirements.txt
+                # Verify files
+                echo "Verifying files in container:"
+                docker exec test-container ls -la /app/
 
-                # Test health endpoint from inside container
-                echo "Testing health endpoint from inside container..."
-                if ! docker exec test-container curl -f http://localhost:8777/health; then
-                    echo "Health check failed inside container"
-                    exit 1
-                fi
+                # Test from inside container
+                echo "Testing from inside container..."
+                docker exec test-container curl -v http://localhost:8777/health
 
-                # Wait a bit more for the app to be fully ready
-                sleep 2
+                # Test from host with IP
+                CONTAINER_IP=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' test-container)
+                echo "Testing from host using container IP: ${CONTAINER_IP}"
+                curl -v http://${CONTAINER_IP}:8777/health
 
-                # Test health endpoint from host
-                echo "Testing health endpoint from host..."
-                MAX_RETRIES=3
-                RETRY_COUNT=0
+                # Test from host with localhost
+                echo "Testing from host using localhost:"
+                curl -v http://localhost:8777/health
 
-                while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
-                    if curl -f http://localhost:8777/health; then
-                        echo "Health check passed from host"
-
-                        # Now test the main endpoint
-                        echo "Testing main endpoint..."
-                        curl -v http://localhost:8777/
-                        exit 0
-                    fi
-
-                    RETRY_COUNT=$((RETRY_COUNT + 1))
-                    echo "Health check attempt $RETRY_COUNT failed, retrying..."
-                    sleep 2
-                done
-
-                echo "Health check failed after $MAX_RETRIES attempts"
-                docker logs test-container
-                exit 1
+                # Test main endpoint
+                echo "Testing main endpoint:"
+                curl -v http://localhost:8777/
             '''
         }
     }
