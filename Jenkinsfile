@@ -50,6 +50,7 @@ pipeline {
 
                        # Debug: Verify file is copied
                        docker exec test-container ls -la /app/Scores.txt
+                       docker exec test-container ls -la /app/e2e.py
 
                        # Wait for container to be ready
                        sleep 10
