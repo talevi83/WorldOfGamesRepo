@@ -5,20 +5,27 @@ pipeline {
         IMAGE_NAME = 'talevi83/flask-scores'
         IMAGE_TAG = 'latest'
     }
+
+    options {
+        // This will help ensure cleanup even if the pipeline fails
+        skipDefaultCheckout(false)
+    }
+
     stages {
         stage('Checkout') {
             steps {
                 checkout scm
             }
         }
+
         stage('Build') {
             steps {
                 script {
-                    // Add error handling for docker build
                     sh "docker build -t ${IMAGE_NAME}:${IMAGE_TAG} ."
                 }
             }
         }
+
         stage('Run') {
             steps {
                 script {
@@ -26,7 +33,7 @@ pipeline {
                         # Cleanup any existing container first
                         docker stop test-container || true
                         docker rm test-container || true
-                        
+
                         docker run -d \
                             -p 8777:8777 \
                             -v ${WORKSPACE}/Scores.txt:/app/Scores.txt \
@@ -40,6 +47,7 @@ pipeline {
                 }
             }
         }
+
         stage('Test') {
             steps {
                 script {
@@ -51,6 +59,7 @@ pipeline {
                 }
             }
         }
+
         stage('Finalize') {
             steps {
                 script {
@@ -65,19 +74,18 @@ pipeline {
                     }
                 }
             }
-            post {
-                always {
-                    sh 'docker logout'
-                }
-            }
         }
-    }
-    post {
-        failure {
-            script {
-                // Cleanup on failure
-                sh 'docker stop test-container || true'
-                sh 'docker rm test-container || true'
+
+        // Add a cleanup stage that runs whether the pipeline succeeds or fails
+        stage('Cleanup') {
+            steps {
+                script {
+                    sh '''
+                        docker stop test-container || true
+                        docker rm test-container || true
+                        docker logout || true
+                    '''
+                }
             }
         }
     }
