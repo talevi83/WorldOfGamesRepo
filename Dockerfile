@@ -1,14 +1,30 @@
-FROM python:3.9-slim
+# Use a Python base image
+FROM python:3.9
 
+# Install Chrome and ChromeDriver dependencies
+RUN apt-get update && apt-get install -y \
+    wget \
+    unzip \
+    chromium \
+    chromium-driver \
+    && rm -rf /var/lib/apt/lists/*
+
+# Set up Chrome environment variables
+ENV CHROME_BIN=/usr/bin/chromium
+ENV CHROMEDRIVER_PATH=/usr/bin/chromedriver
+
+# Set up working directory
 WORKDIR /app
 
-RUN pip install flask
+# Copy and install requirements
+COPY requirements.txt .
+RUN pip install -r requirements.txt
 
-COPY MainScores.py .
-COPY Utils.py .
-COPY Scores.txt .
+# Copy application files
+COPY . .
 
-EXPOSE 5000
+# Expose port
+EXPOSE 8777
 
-ENV FLASK_APP=MainScores.py
-CMD ["python", "MainScores.py"]
+# Command to run the application
+CMD ["python", "app.py"]
