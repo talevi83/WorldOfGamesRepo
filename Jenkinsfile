@@ -39,7 +39,7 @@ pipeline {
                 docker stop test-container || true
                 docker rm test-container || true
 
-                # Run container with additional logging and host network
+                # Run container with host network
                 docker run -d \
                     --network host \
                     --name test-container \
@@ -53,14 +53,6 @@ pipeline {
                 echo "Container logs:"
                 docker logs test-container
 
-                # Network debugging
-                echo "Host network ports:"
-                netstat -tulpn | grep 8777 || true
-
-                echo "Container network info:"
-                docker inspect -f '{{.NetworkSettings.Networks}}' test-container
-                docker exec test-container ss -tulpn | grep 8777
-
                 # If container is running, proceed with file copies
                 if docker ps | grep -q test-container; then
                     # Copy files into container
@@ -73,18 +65,23 @@ pipeline {
                     docker exec test-container ls -la /app/e2e.py
                     docker exec test-container ls -la /app/requirements.txt
 
-                    # Test connectivity from inside container
+                    # Test from inside container
+                    echo "Testing from inside container:"
                     docker exec test-container curl -v http://localhost:8777/
 
-                    # Test connectivity from host
-                    for i in {1..5}; do
+                    # Test from Jenkins
+                    echo "Testing from Jenkins:"
+                    for i in {1..3}; do
                         echo "Attempt $i: Testing connection..."
-                        if curl -v --max-time 5 http://localhost:8777/; then
+                        if curl -v --connect-timeout 5 http://localhost:8777/; then
                             echo "Connection successful!"
-                            break
+                            exit 0
                         fi
                         sleep 2
                     done
+
+                    echo "All connection attempts failed"
+                    exit 1
                 else
                     echo "Container failed to start properly"
                     docker logs test-container
