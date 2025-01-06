@@ -31,9 +31,11 @@ pipeline {
     steps {
         script {
             sh '''
-                # Cleanup networks
-                docker network prune -f
-                docker network create test-network
+                # Cleanup any existing network
+                docker network rm test-network || true
+
+                # Create new network
+                docker network create test-network || true
 
                 # Debug: Check file existence and permissions
                 ls -la "${WORKSPACE}/Scores.txt"
@@ -54,7 +56,7 @@ pipeline {
                 docker cp "${WORKSPACE}/Scores.txt" test-container:/app/Scores.txt
                 docker cp "${WORKSPACE}/tests/e2e.py" test-container:/app/e2e.py
 
-                # Install test requirements (if needed - might not be necessary since requirements are already installed in the image)
+                # Install test requirements
                 docker exec test-container pip install selenium pytest requests
 
                 echo "Waiting for container to initialize..."
