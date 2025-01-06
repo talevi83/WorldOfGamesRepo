@@ -43,7 +43,7 @@ pipeline {
                 docker stop test-container || true
                 docker rm test-container || true
 
-                # Run container with specific file mounts instead of whole workspace
+                # Run container
                 docker run -d \
                     --network test-network \
                     -p 8777:8777 \
@@ -53,22 +53,17 @@ pipeline {
                 # Copy required files into the container
                 docker cp "${WORKSPACE}/Scores.txt" test-container:/app/Scores.txt
                 docker cp "${WORKSPACE}/tests/e2e.py" test-container:/app/e2e.py
-                docker cp "${WORKSPACE}/tests/requirements.txt" test-container:/app/requirements.txt
+
+                # Install test requirements (if needed - might not be necessary since requirements are already installed in the image)
+                docker exec test-container pip install selenium pytest requests
 
                 echo "Waiting for container to initialize..."
                 sleep 10
-
-                # Install test requirements
-                docker exec test-container pip install -r /app/requirements.txt
 
                 # Debug: Check container status
                 docker ps
                 echo "Container logs:"
                 docker logs test-container
-
-                # Test container health
-                echo "Testing from inside container..."
-                docker exec test-container curl -v http://localhost:8777/health
             '''
         }
     }
