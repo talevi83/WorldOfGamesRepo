@@ -57,7 +57,7 @@ pipeline {
                 docker cp "${WORKSPACE}/tests/e2e.py" test-container:/app/e2e.py
 
                 # Install test requirements
-                docker exec test-container pip install selenium pytest requests
+                # docker exec test-container pip install selenium pytest requests
 
                 echo "Waiting for container to initialize..."
                 sleep 10
