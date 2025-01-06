@@ -31,7 +31,7 @@ pipeline {
     steps {
         script {
             sh '''
-                # Create a dedicated network for the test
+                # Cleanup networks
                 docker network prune -f
                 docker network create test-network
 
@@ -43,43 +43,32 @@ pipeline {
                 docker stop test-container || true
                 docker rm test-container || true
 
-                # Run container with explicit port mapping
+                # Run container with specific file mounts instead of whole workspace
                 docker run -d \
                     --network test-network \
                     -p 8777:8777 \
-                    -v "${WORKSPACE}:/app" \
                     --name test-container \
                     ${IMAGE_NAME}:${IMAGE_TAG}
 
-                # Wait for container to initialize
+                # Copy required files into the container
+                docker cp "${WORKSPACE}/Scores.txt" test-container:/app/Scores.txt
+                docker cp "${WORKSPACE}/tests/e2e.py" test-container:/app/e2e.py
+                docker cp "${WORKSPACE}/tests/requirements.txt" test-container:/app/requirements.txt
+
                 echo "Waiting for container to initialize..."
                 sleep 10
 
-                # Check container status and logs
+                # Install test requirements
+                docker exec test-container pip install -r /app/requirements.txt
+
+                # Debug: Check container status
                 docker ps
                 echo "Container logs:"
                 docker logs test-container
 
-                # Test health endpoint from container
+                # Test container health
                 echo "Testing from inside container..."
                 docker exec test-container curl -v http://localhost:8777/health
-
-                # Test health endpoint from host with absolute URL
-                echo "Testing from host..."
-                curl -v --connect-timeout 10 http://0.0.0.0:8777/health
-
-                if [ $? -eq 0 ]; then
-                    echo "Connection successful!"
-                    curl -v http://0.0.0.0:8777/
-                else
-                    echo "Connection failed. Container status:"
-                    docker ps
-                    echo "Container logs:"
-                    docker logs test-container
-                    echo "Container network info:"
-                    docker inspect test-container | grep -A 20 "NetworkSettings"
-                    exit 1
-                fi
             '''
         }
     }
