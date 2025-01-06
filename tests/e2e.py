@@ -33,8 +33,10 @@ if __name__ == "__main__":
     teardown()
 
     if result:
+        print("TEST PASSED! :-)\n")
         exit(0)
     else:
+        print("TEST FAILED! :-(\n")
         exit(-1)
 
 
